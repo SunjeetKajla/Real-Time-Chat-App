@@ -3,7 +3,35 @@ const joinRoomButton = document.getElementById('room-button');
 const messageInput = document.getElementById('message-input');
 const roomInput = document.getElementById('room-input');
 const form = document.getElementById('form');
+const room = roomInput.value || 'global';
 let currentUser = null;
+
+async function loadMessageHistory(room = 'global') {
+    try {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        displayMessage(`Loading message history for room: ${room}... in 4 seconds`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        displayMessage(`Loading message history for room: ${room}... in 3 seconds`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        displayMessage(`Loading message history for room: ${room}... in 2 seconds`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        displayMessage(`Loading message history for room: ${room}... in 1 seconds`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const response = await fetch(`/api/messages/${room}`);
+        const messages = await response.json();
+        
+        // Clear existing messages
+        document.getElementById('message-container').innerHTML = '';
+        
+        // Display each message
+        messages.forEach(msg => {
+            displayMessage(`${msg.user_name}: ${msg.message}`);
+        });
+        
+    } catch (error) {
+        console.error('Error loading messages:', error);
+    }
+}
 
 fetch('/auth/user')
     .then(res => res.json())
@@ -32,8 +60,9 @@ function showChatInterface() {
     document.getElementById('form').style.display = 'flex';
     document.getElementById('loginGoogleButton').style.display = 'none';
     document.getElementById('loginGuestButton').style.display = 'none';
-    document.getElementById('slert').style.display = 'none';
+    document.getElementById('alert').style.display = 'none';
     document.getElementById('logoutButton').style.display = 'block';
+    loadMessageHistory('global');
     const userName = currentUser?.displayName || 'Anonymous';
     displayMessage(`Welcome, ${userName}!`);
 }
@@ -42,6 +71,7 @@ function showChatInterfaceGuest() {
     document.getElementById('form').style.display = 'flex';
     document.getElementById('loginGuestButton').style.display = 'none';
     document.getElementById('alert').style.display = 'none';
+    loadMessageHistory('global');
     const userName = currentUser?.displayName || 'Anonymous';
     displayMessage(`Welcome, ${userName}!`);
 }
@@ -56,7 +86,7 @@ function showLoginInterface() {
 
 socket.on('connect', () => {
     displayMessage(`Connected to server, You connected with id: ${socket.id}`);
-    displayMessage("You Joined Global Chat Room");
+    displayMessage("You Joined Global Chat Room, To Chat Personally - Join a Room");
 });
 
 
@@ -82,6 +112,7 @@ joinRoomButton.addEventListener("click", () => {
     if (room) {
         socket.emit('join-room', room);
         displayMessage(`Joined room: ${room}`);
+        loadMessageHistory(room);
     }
 });
 

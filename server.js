@@ -1,12 +1,16 @@
 const express = require('express');
 const http = require('http');
-const socketIo = require('socket.io');
+const { createClient } = require('@supabase/supabase-js');
+const supabaseUrl = 'https://dtxvqytdkkrficnjgene.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0eHZxeXRka2tyZmljbmpnZW5lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NDc5NzAsImV4cCI6MjA3MzUyMzk3MH0.HbVgakzFV7FqV0J-wNOFso_UohCO2TQQc9PHzntMsUI';
+const supabase = createClient(supabaseUrl, supabaseKey);
 const path = require('path');
 const session = require('express-session');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const app = express();
 const server = http.createServer(app);
+const socketIo = require('socket.io');
 const io = socketIo(server, {
     cors: {
         origin: '*',
@@ -40,7 +44,7 @@ passport.deserializeUser((user, done) => done(null, user));
 
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
-app.get('/auth/google/callback', 
+app.get('/auth/google/callback',
     passport.authenticate('google', { failureRedirect: '/' }),
     (req, res) => res.redirect('/')
 );
@@ -53,18 +57,48 @@ app.get('/auth/logout', (req, res) => {
     req.logout(() => res.redirect('/'));
 });
 
+app.get('/api/messages/:room', async (req, res) => {
+    const room = req.params.room === 'global' ? 'global' : req.params.room;
+
+    const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('room', room)
+        .order('created_at', { ascending: true });
+
+    if (error) {
+        return res.status(500).json({ error: error.message });
+    }
+
+    res.json(data);
+});
+
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
-    socket.on('send-chat-message', (data) => {
-    console.log('Received chat message:', data);
-    const messageWithName = `${data.name}: ${data.message}`;
-    if (data.room === "") {
-        socket.broadcast.emit('receive-message', messageWithName);
-    } else {
-        socket.to(data.room).emit('receive-message', messageWithName);
-    }
-});
+    socket.on('send-chat-message', async (data) => {
+        console.log('Received chat message:', data);
+
+        const { error } = await supabase
+            .from('messages')
+            .insert({
+                message: data.message,
+                user_name: data.name,
+                room: data.room || 'global'
+            });
+
+        if (error) {
+            console.error('Database error:', error);
+            return;
+        }
+
+        const messageWithName = `${data.name}: ${data.message}`;
+        if (data.room === "" || data.room === "global") {
+            socket.broadcast.emit('receive-message', messageWithName);
+        } else {
+            socket.to(data.room).emit('receive-message', messageWithName);
+        }
+    });
 
     socket.on('join-room', (room) => {
         socket.join(room);
@@ -78,10 +112,6 @@ io.on('connection', (socket) => {
     socket.on('error', (error) => {
         console.error('Socket error:', error);
     });
-});
-
-server.on('error', (error) => {
-    console.error('Server error:', error);
 });
 
 const PORT = process.env.PORT || 3000;
