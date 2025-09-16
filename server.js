@@ -76,6 +76,9 @@ app.get('/api/messages/:room', async (req, res) => {
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
+    socket.join('global');
+    socket.currentRoom = 'global';
+
     socket.on('send-chat-message', async (data) => {
         console.log('Received chat message:', data);
 
@@ -93,17 +96,24 @@ io.on('connection', (socket) => {
         }
 
         const messageWithName = `${data.name}: ${data.message}`;
-        if (data.room === "" || data.room === "global") {
-            socket.broadcast.emit('receive-message', messageWithName);
-        } else {
-            socket.to(data.room).emit('receive-message', messageWithName);
-        }
-    });
+        const targetRoom = data.room || 'global';
+        socket.to(targetRoom).emit('receive-message', messageWithName);
+});
 
     socket.on('join-room', (room) => {
+        // Leave all rooms including global
+        socket.rooms.forEach(roomName => {
+            if (roomName !== socket.id) {
+                socket.leave(roomName);
+            }
+        });
+
+        // Join the new room
         socket.join(room);
+        socket.currentRoom = room;
         console.log(`User ${socket.id} joined room: ${room}`);
     });
+
 
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
