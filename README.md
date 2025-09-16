@@ -7,7 +7,7 @@ A modern, real-time chat application built with Node.js, Socket.IO, and Supabase
 - **Real-time messaging** using Socket.IO
 - **Google OAuth authentication** with Passport.js
 - **Guest login** for anonymous users
-- **Room-based chat** - join specific rooms or use global chat
+- **Room-based chat** - join specific rooms with isolated messaging or use global chat
 - **Message persistence** with Supabase database
 - **Message history** loading for each room
 - **Responsive design** with Tailwind CSS
@@ -107,11 +107,11 @@ The server will start on `http://127.0.0.1:3000`
 ## Socket.IO Events
 
 ### Client to Server
-- `send-chat-message` - Send a new message
-- `join-room` - Join a specific chat room
+- `send-chat-message` - Send a new message with room targeting
+- `join-room` - Join a specific chat room (leaves previous rooms)
 
 ### Server to Client
-- `receive-message` - Receive new messages
+- `receive-message` - Receive new messages from current room only
 - `connect` - Connection established
 - `disconnect` - Connection lost
 
@@ -124,9 +124,10 @@ The server will start on `http://127.0.0.1:3000`
 
 ### Chat Functionality
 - **Global Chat**: Default room for all users
-- **Private Rooms**: Create/join specific rooms
-- **Message History**: Load previous messages when joining rooms
+- **Private Rooms**: Create/join specific rooms with isolated messaging (users only see messages from their current room)
+- **Message History**: Load previous messages when joining rooms with animated countdown
 - **Real-time Updates**: Instant message delivery
+- **Room Isolation**: Users in private rooms don't receive global messages
 
 ### User Interface
 - **Responsive Design**: Works on desktop and mobile
@@ -199,6 +200,11 @@ This project is for educational purposes. Please check with the original course 
    - Verify Supabase connection
    - Check table structure
    - Ensure proper permissions
+
+4. **Room Messaging Issues**
+   - Users not receiving room messages: Check if properly joined room
+   - Global messages appearing in private rooms: Ensure users leave global room when joining private rooms
+   - Message history not loading: Verify room parameter in API call
 
 ### Support
 
